@@ -1,0 +1,93 @@
+version: '3'
+
+services:
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - microservice-network
+
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "3001:3001"
+    depends_on:
+      - mongodb
+    environment:
+      - MONGO_URI=mongodb+srv://exam:exam@leap.o3z6i.mongodb.net/auth_service
+      - JWT_SECRET=123
+      - AUTH_PORT=3001
+    networks:
+      - microservice-network
+
+  blog-service:
+    build: ./blog-service
+    ports:
+      - "3002:3002"
+    depends_on:
+      - mongodb
+      - auth-service
+    environment:
+      - MONGO_URI=mongodb+srv://exam:exam@leap.o3z6i.mongodb.net/blog_service
+      - BLOG_PORT=3002
+      - AUTH_SERVICE_URL=http://auth-service:3001
+    networks:
+      - microservice-network
+
+  comment-service:
+    build: ./comment-service
+    ports:
+      - "3003:3003"
+    depends_on:
+      - mongodb
+      - auth-service
+      - blog-service
+    environment:
+      - MONGO_URI=mongodb+srv://exam:exam@leap.o3z6i.mongodb.net/comment_service
+      - COMMENT_PORT=3003
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - BLOG_SERVICE_URL=http://blog-service:3002
+    networks:
+      - microservice-network
+
+  profile-service:
+    build: ./profile-service
+    ports:
+      - "3004:3004"
+    depends_on:
+      - mongodb
+      - auth-service
+    environment:
+      - MONGO_URI=mongodb+srv://exam:exam@leap.o3z6i.mongodb.net/profile_service
+      - PROFILE_PORT=3004
+      - AUTH_SERVICE_URL=http://auth-service:3001
+    networks:
+      - microservice-network
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth-service
+      - blog-service
+      - comment-service
+      - profile-service
+    environment:
+      - PORT=3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - BLOG_SERVICE_URL=http://blog-service:3002
+      - COMMENT_SERVICE_URL=http://comment-service:3003
+      - PROFILE_SERVICE_URL=http://profile-service:3004
+    networks:
+      - microservice-network
+
+networks:
+  microservice-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:

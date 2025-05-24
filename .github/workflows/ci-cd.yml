@@ -1,0 +1,38 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        service: [api-gateway, auth-service, blog-service, comment-service, profile-service]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: ${{ matrix.service }}/package.json
+      
+      - name: Install dependencies
+        working-directory: ${{ matrix.service }}
+        run: npm ci
+      
+      - name: Run tests
+        working-directory: ${{ matrix.service }}
+        run: npm test
+        
+      - name: Build Docker image
+        working-directory: ${{ matrix.service }}
+        run: docker build -t ${{ matrix.service }}:${{ github.sha }} .
